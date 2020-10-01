@@ -178,7 +178,27 @@ void callback(char *topic, byte *payload, unsigned int length)
   }
   if (argument[0] == "get")
   {
-    Serial.println("Get command");
+    if( argument[1] == "air_temp"){
+      Serial.println("->Get air temp command");
+      String value = String(tempBuffer)+','+argument[2];
+      String topic = "Node/"+MAC_ADDRESS+"/value";
+      client.publish(topic.c_str(),value.c_str());
+      Serial.println("-> Publish to topic ["+topic+"] payload = ["+value+"]");
+    }else  if( argument[1] == "air_humid"){
+      Serial.println("->Get air humid command");
+      String value = String(humidBuffer)+','+argument[2];
+      String topic = "Node/"+MAC_ADDRESS+"/value";
+      client.publish(topic.c_str(),value.c_str());
+      Serial.println("-> Publish to topic ["+topic+"] payload = ["+value+"]");
+    }else if( argument[1] == "light"){
+      Serial.println("->Get light command");
+      String value = String(lightMeter.readLightLevel())+','+argument[2];
+      String topic = "Node/"+MAC_ADDRESS+"/value";
+      client.publish(topic.c_str(),value.c_str());
+      Serial.println("-> Publish to topic ["+topic+"] payload = ["+value+"]");
+    }else{
+      Serial.println("->Invalid command");
+    }
   }else if(argument[0] == "set"){
     if (argument[1] == "config")
     {
@@ -192,7 +212,7 @@ void callback(char *topic, byte *payload, unsigned int length)
     else if (argument[1] == "switch")
     {
       Serial.println("->Switch node command");
-      if (argument[2] == "true")
+      if (argument[2] == "1")
       {
         digitalWrite(PIN_CONTROL, HIGH);
         Serial.println("->Turn on");
