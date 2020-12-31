@@ -5,7 +5,8 @@
 #include <IRremoteESP8266.h>
 #include <Wire.h>
 #include <BH1750.h>
-#define VERSION "1.0.11"
+#include <Adafruit_ADS1015.h>
+#define VERSION "1.0.12"
 #define PIN_CONTROL 14
 
 #define NEC_BITS 32
@@ -19,7 +20,7 @@
 /* Wifi config part */
 const char *ssid = "SmartFarm2.4";
 const char *password = "sf504504";
-const char *mqtt_server = "192.168.1.2";
+const char *mqtt_server = "192.168.1.11";
 /********************/
 
 /* Declare variable part */
@@ -34,6 +35,7 @@ float tempBuffer = 0.0;
 float humidBuffer = 0.0;
 BH1750 lightMeter;
 IRsend irsend(14);
+Adafruit_ADS1115 ads;
 /*************************/
 
 /* Declare function */
@@ -52,6 +54,7 @@ void setup()
   Serial.println();
   Wire.begin(4, 5);
   lightMeter.begin();
+  ads.begin();
   pinMode(PIN_CONTROL, OUTPUT);
   Serial.println();
   Serial.print("->Node V");
@@ -178,35 +181,79 @@ void callback(char *topic, byte *payload, unsigned int length)
   }
   if (argument[0] == "get")
   {
-    if( argument[1] == "air_temp"){
+    if (argument[1] == "air_temp")
+    {
       Serial.println("->Get air temp command");
-      String value = String(tempBuffer)+','+argument[2];
-      String topic = "Node/"+MAC_ADDRESS+"/value";
-      client.publish(topic.c_str(),value.c_str());
-      Serial.println("-> Publish to topic ["+topic+"] payload = ["+value+"]");
-    }else  if( argument[1] == "air_humid"){
+      String value = String(tempBuffer) + ',' + argument[2];
+      String topic = "Node/" + MAC_ADDRESS + "/value";
+      client.publish(topic.c_str(), value.c_str());
+      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
+    }
+    else if (argument[1] == "air_humid")
+    {
       Serial.println("->Get air humid command");
-      String value = String(humidBuffer)+','+argument[2];
-      String topic = "Node/"+MAC_ADDRESS+"/value";
-      client.publish(topic.c_str(),value.c_str());
-      Serial.println("-> Publish to topic ["+topic+"] payload = ["+value+"]");
-    }else if( argument[1] == "light"){
+      String value = String(humidBuffer) + ',' + argument[2];
+      String topic = "Node/" + MAC_ADDRESS + "/value";
+      client.publish(topic.c_str(), value.c_str());
+      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
+    }
+    else if (argument[1] == "light")
+    {
       Serial.println("->Get light command");
-      String value = String(lightMeter.readLightLevel())+','+argument[2];
-      String topic = "Node/"+MAC_ADDRESS+"/value";
-      client.publish(topic.c_str(),value.c_str());
-      Serial.println("-> Publish to topic ["+topic+"] payload = ["+value+"]");
-    }else{
+      String value = String(lightMeter.readLightLevel()) + ',' + argument[2];
+      String topic = "Node/" + MAC_ADDRESS + "/value";
+      client.publish(topic.c_str(), value.c_str());
+      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
+    }
+    else if (argument[1] == "analog0")
+    {
+      Serial.println("->Get analog0 command");
+      String value = String(ads.readADC_SingleEnded(0)) + ',' + argument[2];
+      String topic = "Node/" + MAC_ADDRESS + "/value";
+      client.publish(topic.c_str(), value.c_str());
+      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
+    }
+    else if (argument[1] == "analog1")
+    {
+      Serial.println("->Get analog1 command");
+      String value = String(ads.readADC_SingleEnded(1)) + ',' + argument[2];
+      String topic = "Node/" + MAC_ADDRESS + "/value";
+      client.publish(topic.c_str(), value.c_str());
+      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
+    }
+    else if (argument[1] == "analog2")
+    {
+      Serial.println("->Get analog2 command");
+      String value = String(ads.readADC_SingleEnded(2)) + ',' + argument[2];
+      String topic = "Node/" + MAC_ADDRESS + "/value";
+      client.publish(topic.c_str(), value.c_str());
+      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
+    }
+    else if (argument[1] == "analog3")
+    {
+      Serial.println("->Get analog3 command");
+      String value = String(ads.readADC_SingleEnded(3)) + ',' + argument[2];
+      String topic = "Node/" + MAC_ADDRESS + "/value";
+      client.publish(topic.c_str(), value.c_str());
+      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
+    }
+    else
+    {
       Serial.println("->Invalid command");
     }
-  }else if(argument[0] == "set"){
+  }
+  else if (argument[0] == "set")
+  {
     if (argument[1] == "config")
     {
       Serial.println("->Config command");
-      if( argument[2] == "restart"){
+      if (argument[2] == "restart")
+      {
         ESP.restart();
-      }else{
-         Serial.println("->Invalid command!");
+      }
+      else
+      {
+        Serial.println("->Invalid command!");
       }
     }
     else if (argument[1] == "switch")
@@ -228,7 +275,9 @@ void callback(char *topic, byte *payload, unsigned int length)
     {
       Serial.println("->Invalid command!");
     }
-  }else{
+  }
+  else
+  {
     Serial.println("->Invalid command!");
   }
   // else if (topic_str.indexOf("SensorNode/TempAndHumid") != -1)
@@ -370,7 +419,8 @@ String parseValue(String str, int index)
     runNow++;
     cnt++;
   }
-  if(index == 0){
+  if (index == 0)
+  {
     runNow = 0;
   }
   for (int i = runNow; i < str.indexOf(';', runNow + 1); i++)
