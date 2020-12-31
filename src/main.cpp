@@ -6,8 +6,14 @@
 #include <Wire.h>
 #include <BH1750.h>
 #include <Adafruit_ADS1015.h>
-#define VERSION "1.0.12"
-#define PIN_CONTROL 14
+#define VERSION "1.0.13"
+
+#define PIN_CONTROL_0 5
+#define PIN_CONTROL_1 4
+#define PIN_CONTROL_2 16
+#define PIN_CONTROL_3 14
+#define PIN_CONTROL_4 12
+#define PIN_CONTROL_5 13
 
 #define NEC_BITS 32
 #define NEC_HDR_MARK 9000
@@ -26,16 +32,8 @@ const char *mqtt_server = "192.168.1.11";
 /* Declare variable part */
 WiFiClient espClient;
 PubSubClient client(espClient);
-unsigned long long loopTime[3];
 String MAC_ADDRESS = "";
-int sequenceNumber = 0;
-SDL_ESP8266_HR_AM2315 am2315;
-float dataAM2315[2]; //Array to hold data returned by sensor.  [0,1] => [Humidity, Temperature]
-float tempBuffer = 0.0;
-float humidBuffer = 0.0;
-BH1750 lightMeter;
-IRsend irsend(14);
-Adafruit_ADS1115 ads;
+
 /*************************/
 
 /* Declare function */
@@ -48,14 +46,23 @@ void controlRemote(String command);
 
 void setup()
 {
-  // put your setup code here, to run once:
-  irsend.enableIROut(38);
   Serial.begin(115200);
   Serial.println();
-  Wire.begin(4, 5);
-  lightMeter.begin();
-  ads.begin();
-  pinMode(PIN_CONTROL, OUTPUT);
+
+  pinMode(PIN_CONTROL_0, OUTPUT);
+  pinMode(PIN_CONTROL_1, OUTPUT);
+  pinMode(PIN_CONTROL_2, OUTPUT);
+  pinMode(PIN_CONTROL_3, OUTPUT);
+  pinMode(PIN_CONTROL_4, OUTPUT);
+  pinMode(PIN_CONTROL_5, OUTPUT);
+
+  digitalWrite(PIN_CONTROL_0, 0);
+  digitalWrite(PIN_CONTROL_1, 0);
+  digitalWrite(PIN_CONTROL_2, 0);
+  digitalWrite(PIN_CONTROL_3, 0);
+  digitalWrite(PIN_CONTROL_4, 0);
+  digitalWrite(PIN_CONTROL_5, 0);
+
   Serial.println();
   Serial.print("->Node V");
   Serial.println(VERSION);
@@ -67,7 +74,6 @@ void setup()
   client.setCallback(callback);
   wakeWiFi();
   reconnect();
-  loopTime[0] = millis();
 }
 
 void loop()
@@ -81,19 +87,6 @@ void loop()
   if (!client.connected())
   {
     reconnect();
-  }
-  if (millis() - loopTime[0] >= 1000)
-  {
-    am2315.readData(dataAM2315);
-    if (String(dataAM2315[1]) != "nan")
-    {
-      tempBuffer = dataAM2315[1];
-    }
-    if (String(dataAM2315[0]) != "nan")
-    {
-      humidBuffer = dataAM2315[0];
-    }
-    loopTime[0] = millis();
   }
   client.loop();
 }
@@ -146,6 +139,11 @@ void reconnect()
       Serial.print("->Subscribe to [");
       Serial.print(topic);
       Serial.println("]");
+      topic += "/#";
+      client.subscribe(topic.c_str());
+      Serial.print("->Subscribe to [");
+      Serial.print(topic);
+      Serial.println("]");
       client.subscribe("Node");
       Serial.println("->Subscribe to [Node]");
     }
@@ -179,70 +177,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   {
     argument[i] = parseValue(payload_str, i);
   }
-  if (argument[0] == "get")
-  {
-    if (argument[1] == "air_temp")
-    {
-      Serial.println("->Get air temp command");
-      String value = String(tempBuffer) + ',' + argument[2];
-      String topic = "Node/" + MAC_ADDRESS + "/value";
-      client.publish(topic.c_str(), value.c_str());
-      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
-    }
-    else if (argument[1] == "air_humid")
-    {
-      Serial.println("->Get air humid command");
-      String value = String(humidBuffer) + ',' + argument[2];
-      String topic = "Node/" + MAC_ADDRESS + "/value";
-      client.publish(topic.c_str(), value.c_str());
-      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
-    }
-    else if (argument[1] == "light")
-    {
-      Serial.println("->Get light command");
-      String value = String(lightMeter.readLightLevel()) + ',' + argument[2];
-      String topic = "Node/" + MAC_ADDRESS + "/value";
-      client.publish(topic.c_str(), value.c_str());
-      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
-    }
-    else if (argument[1] == "analog0")
-    {
-      Serial.println("->Get analog0 command");
-      String value = String(ads.readADC_SingleEnded(0)) + ',' + argument[2];
-      String topic = "Node/" + MAC_ADDRESS + "/value";
-      client.publish(topic.c_str(), value.c_str());
-      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
-    }
-    else if (argument[1] == "analog1")
-    {
-      Serial.println("->Get analog1 command");
-      String value = String(ads.readADC_SingleEnded(1)) + ',' + argument[2];
-      String topic = "Node/" + MAC_ADDRESS + "/value";
-      client.publish(topic.c_str(), value.c_str());
-      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
-    }
-    else if (argument[1] == "analog2")
-    {
-      Serial.println("->Get analog2 command");
-      String value = String(ads.readADC_SingleEnded(2)) + ',' + argument[2];
-      String topic = "Node/" + MAC_ADDRESS + "/value";
-      client.publish(topic.c_str(), value.c_str());
-      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
-    }
-    else if (argument[1] == "analog3")
-    {
-      Serial.println("->Get analog3 command");
-      String value = String(ads.readADC_SingleEnded(3)) + ',' + argument[2];
-      String topic = "Node/" + MAC_ADDRESS + "/value";
-      client.publish(topic.c_str(), value.c_str());
-      Serial.println("-> Publish to topic [" + topic + "] payload = [" + value + "]");
-    }
-    else
-    {
-      Serial.println("->Invalid command");
-    }
-  }
-  else if (argument[0] == "set")
+  if (argument[0] == "set")
   {
     if (argument[1] == "config")
     {
@@ -259,14 +194,41 @@ void callback(char *topic, byte *payload, unsigned int length)
     else if (argument[1] == "switch")
     {
       Serial.println("->Switch node command");
+      int pin = topic_str.substring(topic_str.lastIndexOf("/") + 1).toInt();
+      Serial.print("->port = ");
+      Serial.println(pin);
+      int pinOut;
+      switch (pin)
+      {
+      case 0:
+        pinOut = PIN_CONTROL_0;
+        break;
+      case 1:
+        pinOut = PIN_CONTROL_1;
+        break;
+      case 2:
+        pinOut = PIN_CONTROL_2;
+        break;
+      case 3:
+        pinOut = PIN_CONTROL_3;
+        break;
+      case 4:
+        pinOut = PIN_CONTROL_4;
+        break;
+      case 5:
+        pinOut = PIN_CONTROL_5;
+        break;
+      default:
+        break;
+      }
       if (argument[2] == "1")
       {
-        digitalWrite(PIN_CONTROL, HIGH);
+        digitalWrite(pinOut, HIGH);
         Serial.println("->Turn on");
       }
       else
       {
-        digitalWrite(PIN_CONTROL, LOW);
+        digitalWrite(pinOut, LOW);
         Serial.println("->Turn off");
       }
       Serial.println("->SwitchNode did command complete");
@@ -280,53 +242,6 @@ void callback(char *topic, byte *payload, unsigned int length)
   {
     Serial.println("->Invalid command!");
   }
-  // else if (topic_str.indexOf("SensorNode/TempAndHumid") != -1)
-  // {
-  //   tmpPayload = "";
-  //   tmpPayload += String(tempBuffer);
-  //   tmpPayload += ",";
-  //   tmpPayload += String(humidBuffer);
-  //   tmpTopic = oldTopic.substring(0, oldTopic.length() - 1) + "/response";
-  //   client.publish(tmpTopic.c_str(), tmpPayload.c_str());
-  //   Serial.print("->Publish topic = [");
-  //   Serial.print(tmpTopic);
-  //   Serial.print("]");
-  //   Serial.print(" , ");
-  //   Serial.print("Message = [");
-  //   Serial.print(tmpPayload);
-  //   Serial.println("]");
-  //   Serial.print("->Sensor node TempAndHumid case");
-  // }
-  // else if (topic_str.indexOf("SensorNode/SoilMoisture") != -1)
-  // {
-  //   tmpPayload = "";
-  //   tmpPayload = String(analogRead(A0));
-  //   tmpTopic = oldTopic.substring(0, oldTopic.length()) + "/response";
-  //   client.publish(tmpTopic.c_str(), tmpPayload.c_str());
-  //   Serial.print("->Publish topic = [");
-  //   Serial.print(tmpTopic);
-  //   Serial.print("]");
-  //   Serial.print(" , ");
-  //   Serial.print("Message = [");
-  //   Serial.print(tmpPayload);
-  //   Serial.println("]");
-  //   Serial.print("->Sensor node SoilMoisture case");
-  // }
-  // else if (topic_str.indexOf("SensorNode/light") != -1)
-  // {
-  //   tmpPayload = "";
-  //   tmpPayload = String(lightMeter.readLightLevel());
-  //   tmpTopic = oldTopic.substring(0, oldTopic.length()) + "/response";
-  //   client.publish(tmpTopic.c_str(), tmpPayload.c_str());
-  //   Serial.print("->Publish topic = [");
-  //   Serial.print(tmpTopic);
-  //   Serial.print("]");
-  //   Serial.print(" , ");
-  //   Serial.print("Message = [");
-  //   Serial.print(tmpPayload);
-  //   Serial.println("]");
-  //   Serial.print("->Sensor node light case");
-  // }
   // else if (topic_str.indexOf("ControlNode/AirConditioner") != -1)
   // {
   //   controlRemote(payload_str);
@@ -335,76 +250,6 @@ void callback(char *topic, byte *payload, unsigned int length)
   //   Serial.println(" completed");
   //   Serial.print("->Control node AirConditioner case");
   // }
-}
-
-//------------------------------ Control remote part --------------------------------
-void controlRemote(String command)
-{
-  unsigned long data1 = strtoul(command.substring(0, 8).c_str(), NULL, 16);
-  unsigned long data2 = strtoul(command.substring(8, 16).c_str(), NULL, 16);
-  char data3 = strtoul(command.substring(16, 18).c_str(), NULL, 16);
-  Serial.print("data1 = ");
-  Serial.println(data1, HEX);
-
-  Serial.print("data2 = ");
-  Serial.println(data2, HEX);
-
-  Serial.print("data3 = ");
-  Serial.println(data3, HEX);
-  /*uint32_t sendData = 0x00000200;
-  int Total = temp - 15;
-  sendData *= Total;
-  data1+=sendData;*/
-  // Header
-  irsend.mark(NEC_HDR_MARK);
-  irsend.space(NEC_HDR_SPACE);
-
-  // Data
-  for (uint32_t mask = 1UL << (32 - 1); mask; mask >>= 1)
-  {
-    // Serial.println("1");
-    if (data1 & mask)
-    {
-      irsend.mark(NEC_BIT_MARK);
-      irsend.space(NEC_ONE_SPACE);
-    }
-    else
-    {
-      irsend.mark(NEC_BIT_MARK);
-      irsend.space(NEC_ZERO_SPACE);
-    }
-  }
-
-  for (uint32_t mask = 1UL << (32 - 1); mask; mask >>= 1)
-  {
-    if (data2 & mask)
-    {
-      irsend.mark(NEC_BIT_MARK);
-      irsend.space(NEC_ONE_SPACE);
-    }
-    else
-    {
-      irsend.mark(NEC_BIT_MARK);
-      irsend.space(NEC_ZERO_SPACE);
-    }
-  }
-
-  for (uint8_t mask = 1UL << (8 - 1); mask; mask >>= 1)
-  {
-    if (data3 & mask)
-    {
-      irsend.mark(NEC_BIT_MARK);
-      irsend.space(NEC_ONE_SPACE);
-    }
-    else
-    {
-      irsend.mark(NEC_BIT_MARK);
-      irsend.space(NEC_ZERO_SPACE);
-    }
-  }
-  // Footer
-  irsend.mark(NEC_BIT_MARK);
-  irsend.space(0); // Always end with the LED off
 }
 
 String parseValue(String str, int index)
